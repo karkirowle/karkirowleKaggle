@@ -4,9 +4,13 @@ import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
+import string
+from sklearn.grid_search import GridSearchCV
 
 
 # Imputing the age 
+
+
 def age_imputing(df): 
     # Impute the means of Mr and Mrs to missing data
     missMean = df.Age[df.Name.str.contains("Miss")].mean()
@@ -16,6 +20,24 @@ def age_imputing(df):
     df.Age[(df.Name.str.contains("Mrs")) & (df['Age'].isnull())] = mrsMean
     return df
 
+def deck_imputing(df):
+    #Turning cabin number into Deck
+    regex_list = [r'A.*', r'B.*',r'C.*',r'D.*',r'E.*',r'F.*',r'T.*',r'G.*']
+    cabin_list = [1, 2, 3, 4, 5, 6, 7, 8]
+    df['Cabin'] = df['Cabin'].replace(regex_list, cabin_list, regex=True)
+    return df
+
+def gender_encoding(df):
+    sex = {'male':1, 'female':0}
+    df['Sex'] = df['Sex'].map(sex)
+    return df
+
+def embarked_encoding(df):
+    # Apply after NA: because 0->0
+    embarked = {0: 0, 'S':1, 'Q': 2, 'C': 3}
+    df['Embarked'] = df['Embarked'].map(embarked)
+    return df
+ 
 def normal_cleaning(df, cv):
     # Age Imputing
     before = df.Age.isnull().sum()
@@ -25,15 +47,17 @@ def normal_cleaning(df, cv):
     
     dropped = df.fillna(0)
     
-    # Binary encoding of gender
-    sex = {'male':1, 'female':0}
-    dropped['Sex'] = dropped['Sex'].map(sex)
+    dropped = gender_encoding(dropped)
+    dropped = embarked_encoding(dropped)
+    dropped = deck_imputing(dropped)
     print(dropped)
+    # Binary encoding of gender
+   
     # Keep age and fare for now
     if (cv):
-            dropped = dropped[["PassengerId","Age", "Fare", "Pclass","Parch", "Sex"]]
+            dropped = dropped[["PassengerId","Age", "Fare", "Pclass","SibSp","Parch", "Sex", "Cabin", "Embarked"]]
     else:
-        dropped = dropped[["PassengerId","Age", "Fare", "Pclass", "Survived","Parch", "Sex"]]
+        dropped = dropped[["PassengerId","Age", "Fare", "Pclass","SibSp", "Survived","Parch", "Sex", "Cabin", "Embarked"]]
     return dropped
 
 def random_forest_model(training_data, validation_data, testing_data):
@@ -41,7 +65,12 @@ def random_forest_model(training_data, validation_data, testing_data):
     clf = RandomForestClassifier(max_depth=None,\
                                  random_state=0,\
                                   n_estimators=100)
-    clf.fit(training_data.drop(cols_to_delete, axis=1), \
+    param_grid = {
+                 'n_estimators': [5, 10, 15, 20],
+                 'max_depth': [2, 5, 7, 9]
+             }
+    grid_clf = GridSearchCV(clf, param_grid, cv=10)
+    grid_clf.fit(training_data.drop(cols_to_delete, axis=1), \
              training_data["Survived"])
     predicted = clf.predict(training_data.drop(cols_to_delete, axis=1))
     # Training accuracy
