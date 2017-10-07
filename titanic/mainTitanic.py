@@ -4,6 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
+from sklearn.model_selection import train_test_split
 
 
 # Imputing the age 
@@ -21,31 +22,36 @@ def age_imputing(df):
 def normal_cleaning(df):
     dropped = df.dropna()
     # Keep age and fare for now
-    dropped = dropped[["Age", "Fare", "Pclass"]]
+    dropped = dropped[["Age", "Fare", "Pclass", "Survived"]]
     return dropped
 
 def random_forest_model(df, df2):
-    cols_to_delete = ["Pclass"]
+    cols_to_delete = ["Survived"]
     clf = RandomForestClassifier(max_depth=2, random_state=0)
-    clf.fit(df.drop(cols_to_delete, axis=1), df["Pclass"])
+    clf.fit(df.drop(cols_to_delete, axis=1), df["Survived"])
     predicted = clf.predict(df.drop(cols_to_delete, axis=1))
     # Training accuracy
-    training_score = accuracy_score(df["Pclass"], predicted)
+    training_score = accuracy_score(df["Survived"], predicted)
     # Testing accuracy
     predicted_test = clf.predict(df2.drop(cols_to_delete, axis=1))
-    testing_score = accuracy_score(df2["Pclass"], predicted_test)
+    testing_score = accuracy_score(df2["Survived"], predicted_test)
     print("Training accuracy " + str(training_score))
     print("Testing accuracy " + str(testing_score))
     
+
     
-training_data = pd.read_csv("data/train.csv")
+# TODO: CV partitioning
+
+input_data = pd.read_csv("data/train.csv")
 testing_data = pd.read_csv("data/test.csv")
+
+training_data, validation_data = train_test_split(input_data, test_size=0.2)
 
 # TODO: Come up with a method how age can be predicted
 #ageImputing(df)
 
+print(training_data)
 cleaned_training_data = normal_cleaning(training_data)
-cleaned_testing_data = normal_cleaning(testing_data)
+cleaned_validation_data = normal_cleaning(validation_data)
 
-print(cleaned_testing_data)
-random_forest_model(cleaned_training_data, cleaned_testing_data)
+random_forest_model(cleaned_training_data, cleaned_validation_data)
